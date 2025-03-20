@@ -1,0 +1,252 @@
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@font-face {
+    font-family: "HarmonyOS_Sans_SC";
+    src: url(@/assets/fonts/HarmonyOS_Sans_SC_Medium.subset.woff2) format("woff2");
+	font-weight: 500;
+	font-style: medium;
+}
+@font-face {
+    font-family: "HarmonyOS_Sans_SC";
+    src: url(@/assets/fonts/HarmonyOS_Sans_SC_Regular.woff) format("woff");
+	font-weight: 400;
+	font-style: normal;
+}
+@font-face {
+    font-family: "HarmonyOS_Sans_SC";
+    src: url(@/assets/fonts/HarmonyOS_Sans_Bold.ttf);
+	font-weight: 700;
+	font-style: normal;
+}
+
+/* 主题样式 */
+:root {
+	/* --theme:#F27875; */
+	--theme:#2299DD;
+	/* 主题色 */
+	--bg-body: #f6f8fb;
+	/* 背景颜色 */
+	--bg-secondary: #fff;
+	/* 局部颜色 */
+	--night-bg-body: #192039;
+	/* 黑夜背景颜色 */
+	--night-bg-secondary: #1f2745;
+	/* 黑夜局部颜色 */
+	--night-color-dark: #a4a8b4;
+	/* 黑夜局部颜色 */
+	--color-title: #2c2e3b;
+	/* 2号字体颜色 */
+	--color-secondary: #828a92;
+	/* 2号字体颜色 */
+	--night-border-light: #3c4560;
+	/* 黑夜分割线 */
+	--theme-color: #333;
+	--theme-background: #eee;
+	/* 圆角 */
+	--border-radius: 8px;
+	/* 阴影 */
+	--box-shodow: 0px 0px 20px -5px rgba(158, 158, 158, 0.22);
+
+	--post-spacing: 1.78vw;
+  --post-size: 25vw;
+  --mask-size: 100vw;
+}
+
+/* 通用样式 */
+*, *::before, *::after {
+	/* font: inherit;
+	color: inherit; */
+	border: none;
+	outline: none;
+	box-sizing: border-box;
+	scroll-behavior: smooth;
+	scrollbar-width: thin;
+	scrollbar-color: hsl(var(--font-color) / .1) #0000;
+	font-family: HarmonyOS_Sans_SC, sans-serif;
+}
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	line-height: 1.6;
+}
+
+body,p
+{
+	margin: 0;
+	padding: 0;
+}
+
+
+p {
+	word-wrap: break-word;
+	word-break: break-word;
+}
+
+body {
+	line-height: 1.8;
+	color: var(--color-title);
+	background: url(./assets/images/grid.svg) repeat;
+	background-color: var(--bg-body);
+	background-size: 300px 300px;
+}
+button,
+input,
+textarea {
+	-webkit-appearance: none !important;
+	outline: 0;
+	-webkit-tap-highlight-color: transparent
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+  outline: none;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+.card {
+  padding: 2em;
+}
+
+input[type=text],
+input[type=url],
+input[type=email],
+input[type=tel],
+input[type=password],
+input[type=search],
+textarea {
+	border: 1px solid rgba(0, 0, 0, .05);
+	width: 100%;
+	padding-left: 1em;
+	padding-right: .6em;
+}
+
+input[type=text]:focus,
+input[type=url]:focus,
+input[type=email]:focus,
+input[type=tel]:focus,
+input[type=password]:focus,
+input[type=search]:focus,
+textarea:focus {
+	outline: 0
+}
+
+#infinite-handle span button,
+#infinite-handle span button:hover,
+.button,
+button,
+input[type=button],
+input[type=submit] {
+	position: relative;
+	display: inline-block;
+	letter-spacing: 2px;
+	border: 0;
+	border-radius: 1px;
+	display: inline-block;
+	border: 1px solid #eee;
+	border-radius: 999em;
+	padding: 4px 20px;
+	color: var(--night-color-dark);
+	cursor: pointer;
+	background: #fff
+}
+
+#infinite-handle span button:hover,
+.button:hover,
+button:hover,
+input[type=button]:hover,
+input[type=submit]:hover {
+	border-color: var(--theme);
+	color: var(--theme);
+	;
+	text-decoration: none
+}
+
+input::-webkit-input-placeholder,
+textarea::-webkit-input-placeholder {
+	/* WebKit browsers 适配谷歌 */
+	color: #BDCADA;
+}
+
+input:-moz-placeholder,
+textarea:-moz-placeholder {
+	/* Mozilla Firefox 4 to 18 适配火狐 */
+	color: #BDCADA;
+}
+
+input::-moz-placeholder,
+textarea::-moz-placeholder {
+	/* Mozilla Firefox 19+ 适配火狐 */
+	color: #BDCADA;
+}
+
+input:-ms-input-placeholder,
+textarea:-ms-input-placeholder {
+	/* Internet Explorer 10+  适配ie*/
+	color: #BDCADA;
+}
+
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+}
