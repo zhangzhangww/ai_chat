@@ -1,6 +1,6 @@
 <template>
   <div class="container">
-    <h1>智能文件分析系统</h1>
+    <h1>《气象与环境科学》智慧编校系统</h1>
 
     <div class="upload-section">
       <input type="file" ref="fileInput" @change="handleFileSelect" accept=".txt,.docx" :disabled="isProcessing" />
@@ -8,26 +8,48 @@
         {{ buttonText }}
       </button>
     </div>
-    <div class="input-section">
-      <input type="text" v-model="needAbort" placeholder="请输入需要分析的内容">
+    <el-radio-group v-model="radio">
+      <el-radio :value="1">语法检查</el-radio>
+      <el-radio :value="2">格式检查</el-radio>
+      <el-radio :value="3">自定义检查</el-radio>
+    </el-radio-group>
+    <div class="input-section" >
+      <input type="text" v-if="radio ==1" v-model="promptId1" placeholder="请输入需要分析的内容">
+      <input type="text" v-if="radio ==2" v-model="promptId2" placeholder="请输入需要分析的内容">
+      <input type="text" v-if="radio ==3" v-model="needAbort1" placeholder="请输入需要分析的内容">
     </div>
 
     <div class="file-type-tips">
-      <p>支持文件类型：</p>
+      <p>1.支持文件类型：</p>
       <ul>
         <li>📝 TXT文本文件（UTF-8编码）</li>
         <li>📑 Word文档（.docx格式）</li>
       </ul>
-      <p>最大文件尺寸：2MB</p>
+      <p>2.使用说明</p>
+      <ul>
+        <li>（1）选择上传需要修改的文件</li>
+        <li>（2）选择需要检查的类型，可以在提示词管理处进行配置</li>
+        <li>（3）选择开始编校</li>
+      </ul>
     </div>
 
     <div v-if="status.message" :class="['status', status.type]">
       <span v-if="isProcessing" class="loader"></span>
       {{ status.message }}
     </div>
-
+    <!-- 复制成功提示 -->
+    <p v-if="copiedUrlMessage" class="copied-message">{{ copiedUrlMessage }}</p>
+    <!-- 分析结果： -->
     <div v-if="analysisResult" class="result-section">
-      <h2>分析结果</h2>
+      <div class="title">
+        <h2>分析结果</h2>
+        <div class="Function">
+          <span @click="copyText(analysisResult)">复制内容</span>
+          <button @click="exportToWord" class="export-btn">
+            {{ isExporting ? '生成中...' : '生成Word文档' }}
+          </button>
+        </div>
+      </div>
       <div class="result-content" v-html="markdownToHtml(analysisResult)"></div>
       <button @click="resetAll" class="reset-btn">新的分析</button>
     </div>
@@ -38,15 +60,29 @@
 import { ref, computed, reactive } from 'vue';
 import { marked } from 'marked';  // ✅ 使用命名导出
 import * as mammoth from 'mammoth'; // 新增DOCX解析库
+import { Document, Paragraph, Packer, TextRun } from "docx";
+import { saveAs } from 'file-saver';
+import {
+  getPromptList,
+} from '../api/aiChat'
 
 const selectedFile = ref(null);
 const analysisResult = ref('');
 const isProcessing = ref(false);
+const isExporting = ref(false);
+// 用于存储复制成功后的消息
+const copiedUrlMessage = ref('');
 const fileInput = ref(null);
 const abortController = ref(new AbortController());
-const needAbort = ref("请按以下格式输出：\n1. 文章错别字查找，并标记处相应位置\n2. 文章语句优化，并标注相应位置\n3. 调整优化建议");
+const needAbort1 = ref("");
+//语法检查
+const promptId1 = ref('请按以下要求进行修改：\n');
+//格式检查
+const promptId2 = ref('请按以下要求进行修改：\n');
+//单选
+const radio = ref(1);
 // const model = ref('deepseek-ai/DeepSeek-R1-Distill-Qwen-7B');
-const model = ref('deepseek-ai/DeepSeek-R1-Distill-Qwen-7B');
+const model = ref('deepseek-ai/DeepSeek-R1-Distill-Qwen-32B');
 
 const status = reactive({
   message: '',
@@ -58,17 +94,48 @@ onMounted(() => {
     highlight: code => hljs.highlightAuto(code).value,
     sanitize: true // 增加HTML消毒
   });
+  fetchPromptList()
 })
 // Markdown 转 HTML（带代码高亮）
 const markdownToHtml = (content) => {
   return marked(content);
 }
 
+// 获取数据列表
+const fetchPromptList = async () => {
+  try {
+    const { data } = await getPromptList()
+    // tableData.value = data.data
+    // 处理数据并按 promptId 拼接 promptContent
+    // 初始化每组序号计数器
+    let count1 = 0, count2 = 0;
+
+    data.data.forEach(item => {
+      const id = item.promptType;
+      const content = item.promptContent || ''; // 处理可能的空值
+      if (id == 1) {
+        count1++;
+        promptId1.value += `${count1}.${content}\n   `; // 添加序号并换行
+      } else if (id == 2) {
+        count2++;
+        promptId2.value += `${count2}.${content}\n    `; // 添加序号并换行
+      }
+    });
+
+    console.log(promptId1.value);
+    console.log(promptId2.value);
+
+  } catch (error) {
+    ElMessage.error('获取数据失败')
+  }
+}
+
+
 
 // 计算属性
 const buttonText = computed(() => {
   if (isProcessing.value) return '分析中...';
-  return selectedFile.value ? '开始分析' : '选择文件';
+  return selectedFile.value ? '开始编校' : '选择文件';
 });
 
 // 文件选择处理
@@ -79,6 +146,51 @@ const handleFileSelect = async (event) => {
   if (!validateFile(file)) return;
   selectedFile.value = file;
   showStatus('文件已选择，点击开始分析', 'info');
+};
+
+// 复制文本
+
+
+// 复制文本的函数
+const copyText = async (url) => {
+  try {
+    await navigator.clipboard.writeText(url);
+    copiedUrlMessage.value = '已复制到剪贴板！';
+
+    // 可选：在一段时间后隐藏复制成功的提示信息
+    setTimeout(() => {
+      copiedUrlMessage.value = '';
+    }, 2000); // 2秒后隐藏
+  } catch (err) {
+    console.error('无法复制文本：', err);
+    copiedUrlMessage.value = '复制URL失败，请尝试再次点击。';
+  }
+};
+
+
+// 导出Word文档
+const exportToWord = async () => {
+  try {
+    const doc = new Document({
+      sections: [{
+        properties: {},
+        children: analysisResult.value.split('\n').map(line =>
+          new Paragraph({
+            children: [new TextRun({
+              text: line.replace(/^#+\s*/, ''), // 移除Markdown标题
+              bold: line.startsWith('#') // 标题加粗
+            })]
+          })
+        )
+      }]
+    });
+
+    const blob = await Packer.toBlob(doc);
+    saveAs(blob, `分析报告_${new Date().toLocaleDateString().replace(/\//g, '-')}.docx`);
+  } catch (err) {
+    console.error('导出失败:', err);
+    alert('文档生成失败，请重试');
+  }
 };
 
 // 文件验证
@@ -126,9 +238,9 @@ const startAnalysis = async () => {
 const readFileContent = (file) => {
   return new Promise(async (resolve, reject) => {
     try {
-      
-       if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-        
+
+      if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+
         // DOCX解析逻辑
         const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
         resolve(result.value);
@@ -152,6 +264,15 @@ const analyzeContent = async (content) => {
   //   ? `${content.slice(0, 3000)}... [内容已截断]`
   //   : content;
   const analysisText = content;
+  //判断检查类型
+  let needAbort = ref('');
+  if (radio.value == 1) {
+    needAbort.value = promptId1.value;
+  }else if (radio.value == 2) {
+    needAbort.value = promptId2.value;
+  }else{
+    needAbort.value = needAbort1.value
+  }
   try {
     const response = await fetch('https://api.siliconflow.cn/v1/chat/completions', {
       method: 'POST',
@@ -163,7 +284,7 @@ const analyzeContent = async (content) => {
         model: model.value,
         messages: [{
           role: "user",
-          content: `请分析以下文档内容：\n${analysisText}\n${needAbort.value}`
+          content: `分析以下文档内容：\n${needAbort.value}\n文档内容如下：\n${analysisText}`
         }],
         temperature: 0.7,
         top_p: 0.7,
@@ -226,147 +347,5 @@ const resetStatus = () => {
 </script>
 
 <style scoped>
-.container {
-  max-width: 800px;
-  margin: 2rem auto;
-  padding: 20px;
-  font-family: 'Segoe UI', system-ui, sans-serif;
-  background: #F6F6F6;
-}
-
-.upload-section {
-  display: flex;
-  gap: 1rem;
-  margin: 2rem 0;
-  align-items: center;
-}
-
-input[type="file"] {
-  padding: 0.8rem;
-  border: 2px solid #3b82f6;
-  border-radius: 8px;
-  background: #f8fafc;
-  transition: border-color 0.3s;
-}
-input[type="text"] {
-  padding: 0.8rem;
-  border: 1px solid #cacaca;
-  border-radius: 8px;
-  background: #f8fafc;
-  transition: border-color 0.3s;
-}
-
-input[type="file"]:hover {
-  border-color: #2563eb;
-}
-
-button {
-  padding: 0.8rem 1.5rem;
-  background: #3b82f6;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition:
-    background 0.3s,
-    transform 0.1s;
-}
-
-button:hover:not(:disabled) {
-  background: #2563eb;
-  transform: translateY(-1px);
-}
-
-button:disabled {
-  background: #94a3b8;
-  cursor: not-allowed;
-}
-
-.status {
-  padding: 1rem;
-  margin: 1rem 0;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.status.info {
-  background: #e0f2fe;
-  color: #0369a1;
-}
-
-.status.error {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
-.status.success {
-  background: #dcfce7;
-  color: #16a34a;
-}
-
-.loader {
-  width: 20px;
-  height: 20px;
-  border: 3px solid #fff;
-  border-bottom-color: transparent;
-  border-radius: 50%;
-  animation: rotation 1s linear infinite;
-}
-
-@keyframes rotation {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-.result-section {
-  margin-top: 2rem;
-  padding: 1.5rem;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.result-content {
-  /* white-space: pre-wrap; */
-  line-height: 1.6;
-  margin: 1rem 0;
-  padding: 1rem;
-  background: #f8fafc;
-  border-radius: 8px;
-}
-
-.reset-btn {
-  background: #10b981;
-  margin-top: 1rem;
-}
-
-.reset-btn:hover {
-  background: #059669;
-}
-
-
-
-
-.file-type-tips {
-  margin: 0;
-  padding: 0.6rem;
-  border-radius: 8px;
-  color: #666;
-}
-
-.file-type-tips ul {
-  padding-left: 1.5rem;
-  margin: 0.5rem 0;
-}
-
-.file-type-tips li {
-  margin: 0.3rem 0;
-}
+@import url(../assets/styles/file.css);
 </style>

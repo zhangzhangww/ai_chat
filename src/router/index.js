@@ -4,7 +4,7 @@ const routes = [
 	{
 		path: '/',
 		component: () => import('@/views/index.vue'), // 首页
-		redirect: '/home',
+		redirect: '/FileAnalysis',
 		children: [
 			{
 				path: '/home',
@@ -15,6 +15,11 @@ const routes = [
 				path: '/FileAnalysis',
 				name: 'FileAnalysis',
 				component: () => import('@/views/FileAnalysis.vue'),
+			},
+			{
+				path: '/account',
+				name: 'account',
+				component: () => import('@/views/account.vue'),
 			},
 			
 			
@@ -28,7 +33,8 @@ const routes = [
 
 const router = createRouter({
 	history: createWebHashHistory(),
-	routes
+	routes,
+	linkActiveClass: 'active',
 })
 
 

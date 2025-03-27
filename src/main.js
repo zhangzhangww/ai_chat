@@ -6,6 +6,8 @@ import App from './App.vue'
 import hljs from 'highlight.js'
 import "highlight.js/styles/atom-one-dark.css"
 import PiniaPluginPersistedstate from "pinia-plugin-persistedstate"
+import ElementPlus from 'element-plus'
+import 'element-plus/dist/index.css'
 
 const app=createApp(App)
 
@@ -64,6 +66,7 @@ function highlightElement(el) {
 
 
   app.use(pinia)
+  app.use(ElementPlus)
 
 app.use(router)
 app.mount('#app')

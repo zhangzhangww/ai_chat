@@ -50,7 +50,7 @@ import { marked } from 'marked';  // ✅ 使用命名导出
 const msgStore = userMsgStore()
 const aichat = ref(false)
 const msgValue = ref("")
-const model = ref("deepseek-ai/DeepSeek-R1")
+const model = ref("deepseek-ai/DeepSeek-R1-Distill-Qwen-7B")
 const isloading = ref(false)
 const msgDom = ref(null)
 let controller = new AbortController()

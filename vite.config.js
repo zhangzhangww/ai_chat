@@ -18,6 +18,7 @@ export default defineConfig({
 		vue(),
 		AutoImport({
 			imports: ['vue', 'vue-router'],
+			resolvers: [ElementPlusResolver()], // 自动引入组件
 		}),
 		Components({
 			resolvers: [ElementPlusResolver({ ssr: false, directives: false })],
@@ -25,5 +26,14 @@ export default defineConfig({
 			dts: true,
 		}),
 	],
+	server: {
+		proxy: {
+			'/api': { // 匹配所有以 '/api'开头的请求路径
+				target: 'https://hnqx.online', // 代理目标的基础路径
+				changeOrigin: true,
+				 rewrite: (path) => path.replace(/^\/api/, ''),
+			},
+		}
+	},
     
 })
