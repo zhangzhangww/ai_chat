@@ -5,20 +5,20 @@
 			<div class="search__left">
 				<!-- 搜索功能 -->
 				<el-radio-group v-model="filterType" @change="handleFilterChange">
-					<el-radio-button label="0">全部类型</el-radio-button>
-					<el-radio-button label="1">语法检查</el-radio-button>
-					<el-radio-button label="2">格式检查</el-radio-button>
+					<el-radio-button value="0">全部类型</el-radio-button>
+					<el-radio-button value="1">语法检查</el-radio-button>
+					<el-radio-button value="2">格式检查</el-radio-button>
 				</el-radio-group>
 			</div>
 			<div class="search__right">
 				<el-button type="primary" @click="handleAdd">
-					<el-icon class="el-icon--left"></el-icon>新增数据
+					新增数据
 				</el-button>
 			</div>
 		</div>
 
 		<!-- 数据表格 -->
-		<el-table :data="filteredTableData" border style="width: 100%;height:80%;overflow: auto;">
+		<el-table :data="filteredTableData" border style="width: 100%;max-height:80%;overflow: auto;">
 			<!-- 列定义 -->
 			<el-table-column label="序号" type="index" width="60" />
 			<el-table-column label="编校知识" prop="promptContent" show-overflow-tooltip />
@@ -41,11 +41,11 @@
 			</el-table-column>
 		</el-table>
 		<!-- 分页 -->
-		<!-- <div class="page">
+		<div class="page">
 			<el-pagination background layout="total, sizes, prev, pager, next" v-model:total="pagination.total"
 				v-model:page-size="pagination.pageSize" @current-change="handelpage" @size-change="handleSizeChange"
 				v-model:current-page="pagination.pageNum" />
-		</div> -->
+		</div>
 
 		<!-- 表单弹窗 -->
 		<el-dialog v-model="formState.dialogVisible" :title="formState.isEdit ? '编辑提示词' : '新增提示词'" width="600px"
@@ -57,8 +57,8 @@
 
 				<el-form-item label="类型：" prop="promptType">
 					<el-radio-group v-model="formState.form.promptType">
-						<el-radio :value="1">语法检查</el-radio>
 						<el-radio :value="2">格式检查</el-radio>
+						<el-radio :value="1">语法检查</el-radio>
 					</el-radio-group>
 				</el-form-item>
 
@@ -127,16 +127,13 @@ const formState = reactive({
 	isEdit: false,
 	form: {
 		promptContent: '',
-		promptType: 1,
+		promptType: 2,
 		inputSpecialist: '',
 		approveSpecialist: '',
 		aiPromptContent: '',
 	} as PromptItem
 })
-const typeOptions = reactive([
-	{ label: '语法检查', value: 1 },
-	{ label: '格式检查', value: 2 }
-])
+
 
 // ==================== 生命周期 ====================
 onMounted(() => {
@@ -155,12 +152,12 @@ const createFormData = (data: PromptItem) => {
 // 获取数据列表
 const fetchPromptList = async () => {
 	try {
-		const { data } = await getPromptList()
-		// const { data } = await getAllChatList(formData)
+		// const { data } = await getPromptList()
+		const { data } = await getAllChatList(pagination.pageNum, pagination.pageSize)
 
 		// tableData.value = data.data
 		pagination.total = data.total
-		tableData.value = data.data.map(item => ({
+		tableData.value = data.rows.map(item => ({
 			...item,
 			promptType: Number(item.promptType) // 转换为数字
 		}))
@@ -209,7 +206,7 @@ const handleAdd = () => {
 	formState.isEdit = false
 	formState.form = {
 		promptContent: '',
-		promptType: 1,
+		promptType: 2,
 		inputSpecialist: '',
 		approveSpecialist: '',
 		aiPromptContent: '',

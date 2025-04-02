@@ -1,6 +1,7 @@
 <template>
   <div class="container">
-    <h1>《气象与环境科学》智慧编校系统</h1>
+
+    <h1 style="font-size: 40px;">《气象与环境科学》智慧编校系统</h1>
 
     <div class="upload-section">
       <input type="file" ref="fileInput" @change="handleFileSelect" accept=".txt,.docx" :disabled="isProcessing" />
@@ -9,23 +10,20 @@
       </button>
     </div>
     <el-radio-group v-model="radio">
-      <el-radio :value="1">语法检查</el-radio>
+      <el-radio :value="0">全部检查</el-radio>
       <el-radio :value="2">格式检查</el-radio>
+      <el-radio :value="1">语法检查</el-radio>
       <el-radio :value="3">自定义检查</el-radio>
     </el-radio-group>
-    <div class="input-section" >
-      <input type="text" v-if="radio ==1" v-model="promptId1" placeholder="请输入需要分析的内容">
-      <input type="text" v-if="radio ==2" v-model="promptId2" placeholder="请输入需要分析的内容">
-      <input type="text" v-if="radio ==3" v-model="needAbort1" placeholder="请输入需要分析的内容">
+    <div class="input-section">
+      <input type="text" v-if="radio == 0" v-model="promptId" placeholder="请输入需要分析的内容">
+      <input type="text" v-if="radio == 1" v-model="promptId1" placeholder="请输入需要分析的内容">
+      <input type="text" v-if="radio == 2" v-model="promptId2" placeholder="请输入需要分析的内容">
+      <input type="text" v-if="radio == 3" v-model="needAbort1" placeholder="请输入需要分析的内容">
     </div>
 
     <div class="file-type-tips">
-      <p>1.支持文件类型：</p>
-      <ul>
-        <li>📝 TXT文本文件（UTF-8编码）</li>
-        <li>📑 Word文档（.docx格式）</li>
-      </ul>
-      <p>2.使用说明</p>
+
       <ul>
         <li>（1）选择上传需要修改的文件</li>
         <li>（2）选择需要检查的类型，可以在提示词管理处进行配置</li>
@@ -75,14 +73,18 @@ const copiedUrlMessage = ref('');
 const fileInput = ref(null);
 const abortController = ref(new AbortController());
 const needAbort1 = ref("");
+
+//全部检查
+const promptId = ref('');
 //语法检查
-const promptId1 = ref('请按以下要求进行修改：\n');
+const promptId1 = ref('');
 //格式检查
-const promptId2 = ref('请按以下要求进行修改：\n');
+const promptId2 = ref('');
 //单选
-const radio = ref(1);
+const radio = ref(0);
 // const model = ref('deepseek-ai/DeepSeek-R1-Distill-Qwen-7B');
-const model = ref('deepseek-ai/DeepSeek-R1-Distill-Qwen-32B');
+const model = ref('deepseek-ai/DeepSeek-V3');
+
 
 const status = reactive({
   message: '',
@@ -108,11 +110,13 @@ const fetchPromptList = async () => {
     // tableData.value = data.data
     // 处理数据并按 promptId 拼接 promptContent
     // 初始化每组序号计数器
-    let count1 = 0, count2 = 0;
+    let count = 0,count1 = 0, count2 = 0;
 
     data.data.forEach(item => {
+      count++;
       const id = item.promptType;
       const content = item.promptContent || ''; // 处理可能的空值
+      promptId.value += `${count}.${content}\n   `; // 添加序号并换行
       if (id == 1) {
         count1++;
         promptId1.value += `${count1}.${content}\n   `; // 添加序号并换行
@@ -122,8 +126,6 @@ const fetchPromptList = async () => {
       }
     });
 
-    console.log(promptId1.value);
-    console.log(promptId2.value);
 
   } catch (error) {
     ElMessage.error('获取数据失败')
@@ -257,23 +259,24 @@ const readFileContent = (file) => {
 };
 
 // API分析请求
-const analyzeContent = async (content) => {
-  showStatus('正在分析内容...', 'info');
+// 新增响应式变量
+const buffer = ref('');
+const pending = ref('');
+const resultContainer = ref(null);
 
-  // const analysisText = content.length > 3000 
-  //   ? `${content.slice(0, 3000)}... [内容已截断]`
-  //   : content;
-  const analysisText = content;
-  //判断检查类型
-  let needAbort = ref('');
-  if (radio.value == 1) {
-    needAbort.value = promptId1.value;
-  }else if (radio.value == 2) {
-    needAbort.value = promptId2.value;
-  }else{
-    needAbort.value = needAbort1.value
-  }
+// 修改后的分析内容处理逻辑
+const analyzeContent = async (content) => {
+  showStatus('正在分析文件...', 'info');
+  buffer.value = '';
+  pending.value = '';
+  analysisResult.value = '';
+
   try {
+    const needAbort = radio.value === 1 ? promptId1.value : 
+                     radio.value === 2 ? promptId2.value : 
+                     radio.value === 3 ? needAbort1.value : 
+                     promptId.value;
+
     const response = await fetch('https://api.siliconflow.cn/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -284,13 +287,13 @@ const analyzeContent = async (content) => {
         model: model.value,
         messages: [{
           role: "user",
-          content: `分析以下文档内容：\n${needAbort.value}\n文档内容如下：\n${analysisText}`
+          content: `分析以下文档内容，并指出错误在文章对应位置：\n${needAbort}\n文档内容如下：\n${content}`
         }],
         temperature: 0.7,
+        stream: true, // 启用流式传输
         top_p: 0.7,
         top_k: 50,
-        frequency_penalty: 0.5,
-        n: 1
+        frequency_penalty: 0.5
       }),
       signal: abortController.value.signal
     });
@@ -300,8 +303,9 @@ const analyzeContent = async (content) => {
       throw new Error(errorData.error?.message || 'API请求失败');
     }
 
-    const data = await response.json();
-    return data.choices[0].message.content;
+    const reader = response.body.getReader();
+    await processStream(reader);
+    return buffer.value;
   } catch (error) {
     if (error.name === 'AbortError') {
       throw new Error('请求已取消');
@@ -309,6 +313,71 @@ const analyzeContent = async (content) => {
     throw new Error(`分析失败: ${error.message}`);
   }
 };
+
+// 新增流式处理逻辑
+const processStream = async (reader) => {
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = new TextDecoder().decode(value);
+      pending.value += chunk;
+
+      // 处理完整的事件流消息
+      while (pending.value.includes('\n')) {
+        const lineEndIndex = pending.value.indexOf('\n');
+        const line = pending.value.slice(0, lineEndIndex).trim();
+        pending.value = pending.value.slice(lineEndIndex + 1);
+
+        if (line.startsWith('data: ')) {
+          try {
+            const dataStr = line.slice(6);
+            if (dataStr === '[DONE]') break;
+            
+            const data = JSON.parse(dataStr);
+            if (data.choices[0].delta?.content) {
+              buffer.value += data.choices[0].delta.content;
+              analysisResult.value = buffer.value;
+              
+              // 自动滚动到底部
+              await nextTick();
+              if (resultContainer.value) {
+                resultContainer.value.scrollTop = resultContainer.value.scrollHeight;
+              }
+            }
+          } catch (e) {
+            console.warn('解析JSON失败:', e);
+          }
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+};
+
+// 修改后的重置逻辑
+const resetAll = () => {
+  selectedFile.value = null;
+  analysisResult.value = '';
+  buffer.value = '';
+  pending.value = '';
+  resetStatus();
+  resetFileInput();
+  
+  if (abortController.value) {
+    abortController.value.abort();
+    abortController.value = new AbortController();
+  }
+};
+
+// 新增watch保持内容同步
+watch(analysisResult, () => {
+  // 保持原始功能：当结果更新时自动转换markdown
+  markdownToHtml(analysisResult.value);
+});
+
 
 // 错误处理
 const handleAnalysisError = (error) => {
@@ -324,12 +393,12 @@ const initAnalysisProcess = () => {
   abortController.value = new AbortController();
 };
 
-const resetAll = () => {
-  selectedFile.value = null;
-  analysisResult.value = '';
-  resetStatus();
-  resetFileInput();
-};
+// const resetAll = () => {
+//   selectedFile.value = null;
+//   analysisResult.value = '';
+//   resetStatus();
+//   resetFileInput();
+// };
 
 const resetFileInput = () => {
   fileInput.value.value = '';
@@ -348,4 +417,23 @@ const resetStatus = () => {
 
 <style scoped>
 @import url(../assets/styles/file.css);
+
+.history-control {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background: #f5f5f5;
+  border-bottom: 1px solid #ddd;
+  font-size: 14px;
+}
+
+
+.model-select {
+  padding: 4px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+
+}
 </style>

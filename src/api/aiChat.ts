@@ -1,9 +1,9 @@
 import http from '../utils/request.js'
 
 //请求全部列表数据（分页）
-export const getAllChatList= (data) =>{
+export const getAllChatList= (pageNum, pageSize) =>{
 	//返回一个promise对象
-	return http.get(`/chat/prompt/list`,data)
+	return http.get(`/chat/prompt/list?pageNum=${pageNum}&pageSize=${pageSize}`,)
 }
 
 //请求全部列表数据（不分页）

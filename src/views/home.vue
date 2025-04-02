@@ -5,7 +5,7 @@
 
       <span> 模型：
         <select v-model="model" class="model-select">
-         <option v-for="opt in options" :value="opt.value">{{ opt.text }}</option>
+          <option v-for="opt in options" :value="opt.value">{{ opt.text }}</option>
         </select>
       </span>
       <button class="clear-btn" @click="handleClearHistory">清空记录</button>
@@ -24,9 +24,9 @@
           <img v-if="msg.role === 'assistant'" class='role-img' src="@/assets/images/aiIcon.png"
             style="margin-right: 8px;" />
           <div>
-            <div class="content-html ass1" v-if="msg.role === 'assistant'"  v-html="msg.reasoning_content">
+            <div class="content-html ass1" v-if="msg.role === 'assistant'" v-html="msg.reasoning_content">
             </div>
-            <div class="content-html" :class="msg.role === 'assistant' ? 'ass' : 'us'"  v-highlight
+            <div class="content-html" :class="msg.role === 'assistant' ? 'ass' : 'us'" v-highlight
               v-html="markdownToHtml(msg.content)">
             </div>
           </div>
@@ -44,7 +44,7 @@
 
 <script setup>
 import { nextTick, onMounted, ref, onUnmounted } from 'vue'
-import { userMsgStore} from '@/stores/msgStore'
+import { userMsgStore } from '@/stores/msgStore'
 import { marked } from 'marked';  // ✅ 使用命名导出
 
 const msgStore = userMsgStore()
@@ -128,10 +128,10 @@ const submitMsg = async () => {
     msgList.value = [...msgStore.list]
 
     // 添加初始助手消息
-     msgStore.addAssistantMessage('', '')
-     msgList.value = msgStore.list
+    msgStore.addAssistantMessage('', '')
+    msgList.value = msgStore.list
 
-      // 构造上下文消息
+    // 构造上下文消息
     const contextMessages = msgStore.formattedContext
 
     const response = await fetch('https://api.siliconflow.cn/v1/chat/completions', {
@@ -211,15 +211,18 @@ const submitMsg = async () => {
 </script>
 
 <style lang="scss" scoped>
-p{
+p {
   margin: 0;
   padding: 0;
 }
+
 #role-content {
   height: 100%;
-  overflow-y: auto; /* 或者 overflow-y: scroll */
+  overflow-y: auto;
+  /* 或者 overflow-y: scroll */
   /* 其他需要的样式 */
 }
+
 .ass {
   padding: 12px 24px;
   border-radius: 8px;
@@ -272,35 +275,35 @@ p{
 
   .history-control {
     width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 16px;
-  background: #f5f5f5;
-  border-bottom: 1px solid #ddd;
-  font-size: 14px;
-}
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    background: #f5f5f5;
+    border-bottom: 1px solid #ddd;
+    font-size: 14px;
+  }
 
-.clear-btn {
-  padding: 6px 12px;
-  background-color: #ff4d4f;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
+  .clear-btn {
+    padding: 6px 12px;
+    background-color: #ff4d4f;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
 
-.clear-btn:hover {
-  background-color: #ff7875;
-}
+  .clear-btn:hover {
+    background-color: #ff7875;
+  }
 
-.model-select {
-  padding: 4px 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  
-}
+  .model-select {
+    padding: 4px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+
+  }
 
   .message {
     position: relative;

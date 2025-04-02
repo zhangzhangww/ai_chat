@@ -155,6 +155,7 @@
     padding: 0.6rem;
     border-radius: 8px;
     color: #666;
+    background-color: #f0f0f0;
   }
   
   .file-type-tips ul {
@@ -165,3 +166,13 @@
   .file-type-tips li {
     margin: 0.3rem 0;
   }
+
+  input[type=text],
+input[type=url],
+input[type=email],
+input[type=tel],
+input[type=password],
+input[type=search],
+textarea {
+	width: 100%;
+}
