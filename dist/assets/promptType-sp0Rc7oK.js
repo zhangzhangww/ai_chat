@@ -1,0 +1,1 @@
+import{h as e}from"./request-BWjB7kre.js";const o=(t,p)=>e.get(`/chat/promptType/list?pageNum=${t}&pageSize=${p}`),s=()=>e.get("/chat/promptType/getPromptTypeList"),a=t=>e.post("/chat/promptType",t),m=t=>e.put("/chat/promptType",t),y=t=>e.delete(`/chat/promptType/${t}`);export{o as a,a as b,y as d,s as g,m as u};

@@ -1,7 +1,6 @@
 <template>
   <div class="container">
-
-    <h1 style="font-size: 40px;">《气象与环境科学》智慧编校系统</h1>
+    <h1 style="font-size: 32px;">气象科技期刊全文智能编校系统（v1.0）</h1>
 
     <div class="upload-section">
       <input type="file" ref="fileInput" @change="handleFileSelect" accept=".txt,.docx" :disabled="isProcessing" />
@@ -9,24 +8,20 @@
         {{ buttonText }}
       </button>
     </div>
-    <el-radio-group v-model="radio">
-      <el-radio :value="0">全部检查</el-radio>
-      <el-radio :value="2">格式检查</el-radio>
-      <el-radio :value="1">语法检查</el-radio>
-      <el-radio :value="3">自定义检查</el-radio>
-    </el-radio-group>
+    <el-select v-model="radio" style="width: 160px;margin-bottom: 12px;" @change="handleTypeChange">
+      <el-option label="自定义检查" :value="0" />
+      <el-option v-for="item in types" :key="item.typeId" :label="item.typeName" :value="item.typeId" />
+    </el-select>
     <div class="input-section">
-      <input type="text" v-if="radio == 0" v-model="promptId" placeholder="请输入需要分析的内容">
-      <input type="text" v-if="radio == 1" v-model="promptId1" placeholder="请输入需要分析的内容">
-      <input type="text" v-if="radio == 2" v-model="promptId2" placeholder="请输入需要分析的内容">
-      <input type="text" v-if="radio == 3" v-model="needAbort1" placeholder="请输入需要分析的内容">
+      <input v-if="radio == 0" class="input" type="text" v-model="customPrompt" placeholder="请输入检查规则">
+      <div v-if="radio !== 0" class="input" v-html="markdownToHtml(currentPromptContent)">
+      </div>
     </div>
 
     <div class="file-type-tips">
-
       <ul>
         <li>（1）选择上传需要修改的文件</li>
-        <li>（2）选择需要检查的类型，可以在提示词管理处进行配置</li>
+        <li>（2）选择需要检查的类型，可以在知识库管理处进行配置</li>
         <li>（3）选择开始编校</li>
       </ul>
     </div>
@@ -55,90 +50,116 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive } from 'vue';
-import { marked } from 'marked';  // ✅ 使用命名导出
-import * as mammoth from 'mammoth'; // 新增DOCX解析库
+import { ref, computed, reactive, watch, onMounted, nextTick } from 'vue';
+import { marked } from 'marked';
+import * as mammoth from 'mammoth';
 import { Document, Paragraph, Packer, TextRun } from "docx";
 import { saveAs } from 'file-saver';
-import {
-  getPromptList,
-} from '../api/aiChat'
+import { getPromptList } from '../api/aiChat'
+import { getPromptType } from '../api/promptType'
+import { ElMessage } from 'element-plus';
 
+// 响应式变量
 const selectedFile = ref(null);
 const analysisResult = ref('');
 const isProcessing = ref(false);
 const isExporting = ref(false);
-// 用于存储复制成功后的消息
 const copiedUrlMessage = ref('');
 const fileInput = ref(null);
 const abortController = ref(new AbortController());
-const needAbort1 = ref("");
 
-//全部检查
-const promptId = ref('');
-//语法检查
-const promptId1 = ref('');
-//格式检查
-const promptId2 = ref('');
-//单选
-const radio = ref(0);
-// const model = ref('deepseek-ai/DeepSeek-R1-Distill-Qwen-7B');
+// 检查规则相关
+const radio = ref(0); // 默认选择自定义检查
+const types = ref([]);
+const promptList = ref([]); // 存储所有检查规则
+const currentPromptContent = ref('');
+const customPrompt = ref('');
+
 const model = ref('deepseek-ai/DeepSeek-V3');
-
 
 const status = reactive({
   message: '',
-  type: 'info' // info | error | success
+  type: 'info'
 });
-
-onMounted(() => {
-  marked.setOptions({
-    highlight: code => hljs.highlightAuto(code).value,
-    sanitize: true // 增加HTML消毒
-  });
-  fetchPromptList()
-})
-// Markdown 转 HTML（带代码高亮）
-const markdownToHtml = (content) => {
-  return marked(content);
-}
-
-// 获取数据列表
-const fetchPromptList = async () => {
-  try {
-    const { data } = await getPromptList()
-    // tableData.value = data.data
-    // 处理数据并按 promptId 拼接 promptContent
-    // 初始化每组序号计数器
-    let count = 0,count1 = 0, count2 = 0;
-
-    data.data.forEach(item => {
-      count++;
-      const id = item.promptType;
-      const content = item.promptContent || ''; // 处理可能的空值
-      promptId.value += `${count}.${content}\n   `; // 添加序号并换行
-      if (id == 1) {
-        count1++;
-        promptId1.value += `${count1}.${content}\n   `; // 添加序号并换行
-      } else if (id == 2) {
-        count2++;
-        promptId2.value += `${count2}.${content}\n    `; // 添加序号并换行
-      }
-    });
-
-
-  } catch (error) {
-    ElMessage.error('获取数据失败')
-  }
-}
-
-
 
 // 计算属性
 const buttonText = computed(() => {
-  if (isProcessing.value) return '分析中...';
-  return selectedFile.value ? '开始编校' : '选择文件';
+  return isProcessing.value ? '分析中...' : 
+         selectedFile.value ? '开始编校' : '选择文件';
 });
+
+const activePromptContent = computed(() => {
+  return radio.value === 0 ? customPrompt.value : currentPromptContent.value;
+});
+
+// 生命周期钩子
+onMounted(() => {
+  fetchTypeList();
+  marked.setOptions({
+    highlight: code => hljs.highlightAuto(code).value,
+    sanitize: true
+  });
+});
+
+// 方法
+const markdownToHtml = (content) => {
+  return marked(content || '');
+};
+
+// 获取类型列表
+const fetchTypeList = async () => {
+  try {
+    const { data } = await getPromptType();
+    types.value = data.data.map(item => ({
+      ...item,
+      typeId: Number(item.typeId),
+      orderNumber: Number(item.orderNumber)
+    }));
+    
+    // 如果有类型数据，默认选择第一个类型并获取对应的规则
+    if (types.value.length > 0) {
+      radio.value = types.value[0].typeId;
+      await fetchAllPrompts(); // 一次性获取所有规则
+    }
+  } catch (error) {
+    ElMessage.error('获取类型数据失败');
+  }
+};
+
+// 一次性获取所有检查规则
+const fetchAllPrompts = async () => {
+  try {
+    const { data } = await getPromptList();
+    promptList.value = data.data;
+    updateCurrentPromptContent();
+  } catch (error) {
+    ElMessage.error('获取检查规则失败');
+  }
+};
+
+// 类型变更处理
+const handleTypeChange = () => {
+  if (radio.value !== 0) {
+    updateCurrentPromptContent();
+  }
+};
+
+// 更新当前显示的规则内容
+const updateCurrentPromptContent = () => {
+  if (radio.value === 0) return;
+  
+  const filteredData = promptList.value.filter(
+    item => item.promptTypeId === radio.value
+  );
+
+  currentPromptContent.value = filteredData
+    .map((item, index) => {
+      const text = item.promptContent?.trim() || '';
+      return text ? `${index + 1}. ${text}     ` : '';
+    })
+    .filter(Boolean)
+    .join('\n<br>');
+};
 
 // 文件选择处理
 const handleFileSelect = async (event) => {
@@ -151,36 +172,29 @@ const handleFileSelect = async (event) => {
 };
 
 // 复制文本
-
-
-// 复制文本的函数
 const copyText = async (url) => {
   try {
     await navigator.clipboard.writeText(url);
     copiedUrlMessage.value = '已复制到剪贴板！';
-
-    // 可选：在一段时间后隐藏复制成功的提示信息
-    setTimeout(() => {
-      copiedUrlMessage.value = '';
-    }, 2000); // 2秒后隐藏
+    setTimeout(() => copiedUrlMessage.value = '', 2000);
   } catch (err) {
     console.error('无法复制文本：', err);
     copiedUrlMessage.value = '复制URL失败，请尝试再次点击。';
   }
 };
 
-
 // 导出Word文档
 const exportToWord = async () => {
   try {
+    isExporting.value = true;
     const doc = new Document({
       sections: [{
         properties: {},
         children: analysisResult.value.split('\n').map(line =>
           new Paragraph({
             children: [new TextRun({
-              text: line.replace(/^#+\s*/, ''), // 移除Markdown标题
-              bold: line.startsWith('#') // 标题加粗
+              text: line.replace(/^#+\s*/, ''),
+              bold: line.startsWith('#')
             })]
           })
         )
@@ -191,7 +205,9 @@ const exportToWord = async () => {
     saveAs(blob, `分析报告_${new Date().toLocaleDateString().replace(/\//g, '-')}.docx`);
   } catch (err) {
     console.error('导出失败:', err);
-    alert('文档生成失败，请重试');
+    ElMessage.error('文档生成失败，请重试');
+  } finally {
+    isExporting.value = false;
   }
 };
 
@@ -209,11 +225,10 @@ const validateFile = (file) => {
     return false;
   }
   if (file.size > 2 * 1024 * 1024) {
-    showStatus('错误：文件大小不能超过2MB', 'error');
+    showStatus('错误：文件大小不能超过20MB', 'error');
     resetFileInput();
     return false;
   }
-
 
   return true;
 };
@@ -234,22 +249,17 @@ const startAnalysis = async () => {
   }
 };
 
-
-
-// 文件内容读取方法
+// 文件内容读取
 const readFileContent = (file) => {
   return new Promise(async (resolve, reject) => {
     try {
-
       if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-
-        // DOCX解析逻辑
         const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
         resolve(result.value);
       } else {
-        // 原有TXT处理逻辑
         const reader = new FileReader();
         reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = () => reject(new Error('文件读取失败'));
         reader.readAsText(file);
       }
     } catch (error) {
@@ -259,24 +269,11 @@ const readFileContent = (file) => {
 };
 
 // API分析请求
-// 新增响应式变量
-const buffer = ref('');
-const pending = ref('');
-const resultContainer = ref(null);
-
-// 修改后的分析内容处理逻辑
 const analyzeContent = async (content) => {
   showStatus('正在分析文件...', 'info');
-  buffer.value = '';
-  pending.value = '';
   analysisResult.value = '';
 
   try {
-    const needAbort = radio.value === 1 ? promptId1.value : 
-                     radio.value === 2 ? promptId2.value : 
-                     radio.value === 3 ? needAbort1.value : 
-                     promptId.value;
-
     const response = await fetch('https://api.siliconflow.cn/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -285,12 +282,15 @@ const analyzeContent = async (content) => {
       },
       body: JSON.stringify({
         model: model.value,
-        messages: [{
-          role: "user",
-          content: `分析以下文档内容，并指出错误在文章对应位置：\n${needAbort}\n文档内容如下：\n${content}`
-        }],
-        temperature: 0.7,
-        stream: true, // 启用流式传输
+        messages: [
+          { role: "system", content: "你是《气象与环境科学》的编辑" },
+          { 
+            role: "user", 
+            content: `分析以下文档内容，并指出错误在文章对应位置：\n${activePromptContent.value}\n\n文档内容如下：\n${content}` 
+          },
+        ],
+        temperature: 0.2,
+        stream: true,
         top_p: 0.7,
         top_k: 50,
         frequency_penalty: 0.5
@@ -303,9 +303,7 @@ const analyzeContent = async (content) => {
       throw new Error(errorData.error?.message || 'API请求失败');
     }
 
-    const reader = response.body.getReader();
-    await processStream(reader);
-    return buffer.value;
+    return await processStream(response);
   } catch (error) {
     if (error.name === 'AbortError') {
       throw new Error('请求已取消');
@@ -314,37 +312,31 @@ const analyzeContent = async (content) => {
   }
 };
 
-// 新增流式处理逻辑
-const processStream = async (reader) => {
+// 流式处理
+const processStream = async (response) => {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let result = '';
+
   try {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
-      const chunk = new TextDecoder().decode(value);
-      pending.value += chunk;
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split('\n');
 
-      // 处理完整的事件流消息
-      while (pending.value.includes('\n')) {
-        const lineEndIndex = pending.value.indexOf('\n');
-        const line = pending.value.slice(0, lineEndIndex).trim();
-        pending.value = pending.value.slice(lineEndIndex + 1);
-
+      for (const line of lines) {
         if (line.startsWith('data: ')) {
+          const dataStr = line.slice(6);
+          if (dataStr === '[DONE]') break;
+          
           try {
-            const dataStr = line.slice(6);
-            if (dataStr === '[DONE]') break;
-            
             const data = JSON.parse(dataStr);
             if (data.choices[0].delta?.content) {
-              buffer.value += data.choices[0].delta.content;
-              analysisResult.value = buffer.value;
-              
-              // 自动滚动到底部
+              result += data.choices[0].delta.content;
+              analysisResult.value = result;
               await nextTick();
-              if (resultContainer.value) {
-                resultContainer.value.scrollTop = resultContainer.value.scrollHeight;
-              }
             }
           } catch (e) {
             console.warn('解析JSON失败:', e);
@@ -352,17 +344,16 @@ const processStream = async (reader) => {
         }
       }
     }
+    return result;
   } finally {
     reader.releaseLock();
   }
 };
 
-// 修改后的重置逻辑
+// 重置
 const resetAll = () => {
   selectedFile.value = null;
   analysisResult.value = '';
-  buffer.value = '';
-  pending.value = '';
   resetStatus();
   resetFileInput();
   
@@ -371,13 +362,6 @@ const resetAll = () => {
     abortController.value = new AbortController();
   }
 };
-
-// 新增watch保持内容同步
-watch(analysisResult, () => {
-  // 保持原始功能：当结果更新时自动转换markdown
-  markdownToHtml(analysisResult.value);
-});
-
 
 // 错误处理
 const handleAnalysisError = (error) => {
@@ -392,13 +376,6 @@ const initAnalysisProcess = () => {
   analysisResult.value = '';
   abortController.value = new AbortController();
 };
-
-// const resetAll = () => {
-//   selectedFile.value = null;
-//   analysisResult.value = '';
-//   resetStatus();
-//   resetFileInput();
-// };
 
 const resetFileInput = () => {
   fileInput.value.value = '';
@@ -415,8 +392,27 @@ const resetStatus = () => {
 };
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 @import url(../assets/styles/file.css);
+
+.input {
+  width: 100%;
+  max-height: 280px;
+  overflow: auto;
+  position: relative;
+  display: inline-block;
+  letter-spacing: 2px;
+  border: 0;
+  border-radius: 1px;
+  display: inline-block;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 4px 20px;
+  color: #555555;
+  cursor: pointer;
+  background: #fff;
+  font-size: 14px;
+}
 
 .history-control {
   width: 100%;
@@ -429,11 +425,9 @@ const resetStatus = () => {
   font-size: 14px;
 }
 
-
 .model-select {
   padding: 4px 12px;
   border: 1px solid #ddd;
   border-radius: 4px;
-
 }
 </style>

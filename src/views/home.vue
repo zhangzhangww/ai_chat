@@ -232,8 +232,9 @@ p {
 }
 
 .us {
-  background: linear-gradient(78deg, #6740FD 0%, #4495F9 99%);
-  color: #ffffff;
+  float: right;
+  background: #ffffff;
+  color: #333333;
   padding: 12px 24px;
   border-radius: var(--border-radius);
   font-size: 16px;
@@ -265,6 +266,7 @@ p {
 
 .ai_content {
   margin: auto;
+  padding-bottom: 60px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -377,4 +379,5 @@ p {
 
   }
 }
+
 </style>

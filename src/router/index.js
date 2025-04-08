@@ -21,6 +21,21 @@ const routes = [
 				name: 'account',
 				component: () => import('@/views/account.vue'),
 			},
+			{
+				path: '/knowledge',
+				name: 'knowledge',
+				component: () => import('@/views/knowledge.vue'),
+			},
+			{
+				path: '/type',
+				name: 'type',
+				component: () => import('@/views/type.vue'),
+			},
+			{
+				path: '/readerList',
+				name: 'readerList',
+				component: () => import('@/views/readerList.vue'),
+			},
 			
 			
 			

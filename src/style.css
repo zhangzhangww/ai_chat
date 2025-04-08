@@ -65,14 +65,23 @@
   --mask-size: 100vw;
   
 
-  --primary: #8A2BE2;
+  /* --primary: #8A2BE2;
             --primary-light: #9B59B6;
             --secondary: #DA70D6;
             --light: #E6E6FA;
             --dark: #2c0a4d;
             --text: #f8f9fa;
             --card-bg: rgba(255, 255, 255, 0.08);
-            --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); */
+}
+
+.content-item {
+	margin: 16px;
+	padding: 32px;
+	width: 98%;
+	background: #ffffff;
+	height: calc(96% - 60px);
+
 }
 
 /* 通用样式 */
@@ -101,7 +110,7 @@ ul, ol {
     list-style-type: none;
 }
 
-body,p
+body,p,ol
 {
 	margin: 0;
 	padding: 0;
@@ -123,7 +132,6 @@ body {
 button,
 input,
 textarea {
-	-webkit-appearance: none !important;
 	outline: 0;
 	-webkit-tap-highlight-color: transparent
 }

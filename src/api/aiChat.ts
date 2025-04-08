@@ -26,12 +26,18 @@ export const addPrompt= (data) =>{
 //更新数据
 export const updateList= (data:any) =>{
 	//返回一个promise对象
-	return http.post(`/chat/prompt`,data)
+	return http.put(`/chat/prompt`,data)
 }
 
 //删除数据
 export const deleteList= (id:any) =>{
 	//返回一个promise对象
 	return http.delete(`/chat/prompt/${id}`)
+}
+
+//一键备份
+export const savePromptFile= () =>{
+	//返回一个promise对象
+	return http.post(`/chat/prompt/savePromptFile`)
 }
 
