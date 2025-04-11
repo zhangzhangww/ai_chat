@@ -537,7 +537,7 @@ const analyzeContent = async (content) => {
         temperature: 0,
         max_tokens: 5120,
         do_sample: false,
-        stream: false,
+        stream: true,
         top_p: 1.0,
         top_k: 50,
         seed:123,       //固定随机种子
