@@ -35,9 +35,15 @@ export const deleteList= (id:any) =>{
 	return http.delete(`/chat/prompt/${id}`)
 }
 
+//文本校验
+export const textCheck= (data) =>{
+	//返回一个promise对象
+	return http.post(`/chat/chat/textCheck`,data)
+}
+
 //一键备份
 export const savePromptFile= () =>{
 	//返回一个promise对象
 	return http.post(`/chat/prompt/savePromptFile`)
 }
-
+              

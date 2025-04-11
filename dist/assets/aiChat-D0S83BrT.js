@@ -1,0 +1,1 @@
+import{h as r}from"./request-C9YwD_7X.js";const e=()=>r.get("/chat/prompt/getPromptList"),o=t=>r.post("/chat/prompt",t),s=t=>r.put("/chat/prompt",t),a=t=>r.delete(`/chat/prompt/${t}`),m=()=>r.post("/chat/prompt/savePromptFile");export{o as a,a as d,e as g,m as s,s as u};

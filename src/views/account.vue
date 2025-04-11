@@ -4,13 +4,13 @@
 		<div class="search">
 			<div class="search__left">
 				<!-- 搜索功能 -->
-				<el-select v-model="filterType"  style="width: 160px">
+				<el-select v-model="filterType" style="width: 160px">
 					<el-option label="全部类型" :value="0" />
-						<el-option v-for="item in types" :key="item.typeId" :label="item.typeName" :value="item.typeId" />
-					</el-select>
+					<el-option v-for="item in types" :key="item.typeId" :label="item.typeName" :value="item.typeId" />
+				</el-select>
 			</div>
 			<div class="search__right">
-				<el-button   @click="handleBackup">
+				<el-button @click="handleBackup">
 					一键备份
 				</el-button>
 				<el-button type="primary" @click="handleAdd">
@@ -26,8 +26,8 @@
 			<el-table-column label="编校知识" prop="promptContent" show-overflow-tooltip />
 			<el-table-column label="类型" width="120">
 				<template #default="{ row }">
-					<el-tag type="primary" >
-						{{ row.promptTypeName  }}
+					<el-tag type="primary">
+						{{ row.promptTypeName }}
 					</el-tag>
 				</template>
 			</el-table-column>
@@ -50,16 +50,10 @@
 		</div>
 		<!-- 分页组件修改 -->
 		<div class="page">
-    <el-pagination 
-      background 
-      layout="total, sizes, prev, pager, next" 
-      :total="filteredTableData.length"
-      v-model:page-size="pagination.pageSize"
-      v-model:current-page="pagination.pageNum"
-      @current-change="handlePageChange"
-      @size-change="handleSizeChange"
-    />
-  </div>
+			<el-pagination background layout="total, sizes, prev, pager, next" :total="filteredTableData.length"
+				v-model:page-size="pagination.pageSize" v-model:current-page="pagination.pageNum"
+				@current-change="handlePageChange" @size-change="handleSizeChange" />
+		</div>
 
 		<!-- 表单弹窗 -->
 		<el-dialog v-model="formState.dialogVisible" :title="formState.isEdit ? '编辑提示词' : '新增提示词'" width="600px"
@@ -71,7 +65,8 @@
 
 				<el-form-item label="类型：" prop="promptTypeId">
 					<el-select v-model="formState.form.promptTypeId" placeholder="请选择类型" style="width: 100%">
-						<el-option v-for="item in types" :key="item.typeId" :label="item.typeName" :value="item.typeId" />
+						<el-option v-for="item in types" :key="item.typeId" :label="item.typeName"
+							:value="item.typeId" />
 					</el-select>
 				</el-form-item>
 
@@ -131,14 +126,14 @@ interface PromptItem {
 
 const tableData = ref<PromptItem[]>([])
 const formRef = ref<FormInstance>()
-const filterType = ref(0) 
+const filterType = ref(0)
 // ==================== 分页相关状态 ====================
 const pagination = reactive({
 	pageNum: 1,      // 当前页码
 	pageSize: 10,     // 每页条数
 	total: 100        // 总数据量
 })
-const types= ref([
+const types = ref([
 	{ typeId: 1, typeName: '语法检查' },
 ])
 
@@ -155,9 +150,9 @@ const formState = reactive({
 	} as PromptItem
 })
 const rules = reactive({
-  promptContent: [{ required: true, message: '内容不能为空' }],
-  promptTypeId: [{ required: true, message: '请选择类型' }],
-  // 其他字段规则...
+	promptContent: [{ required: true, message: '内容不能为空' }],
+	promptTypeId: [{ required: true, message: '请选择类型' }],
+	// 其他字段规则...
 })
 
 
@@ -197,14 +192,14 @@ const fetchPromptList = async () => {
 const fetchTypeList = async () => {
 	try {
 		const { data } = await getPromptType()
-        
+
 		// 在前端添加"全部类型"选项
 		types.value =
-      data.data.map(item => ({
-        typeId: Number(item.typeId),
-        typeName: item.typeName
-      }))
-    
+			data.data.map(item => ({
+				typeId: Number(item.typeId),
+				typeName: item.typeName
+			}))
+
 	}
 	catch (error) {
 		ElMessage.error('获取数据失败')
@@ -213,28 +208,28 @@ const fetchTypeList = async () => {
 
 // 一键备份处理
 const handleBackup = async () => {
-    try {
-        await ElMessageBox.confirm('确定要备份所有提示词数据吗？', '备份确认', {
-            confirmButtonText: '确认',
-            cancelButtonText: '取消',
-            type: 'warning'
-        })
-        
-        // 直接调用备份接口，不传任何参数
-        const response = await savePromptFile()
+	try {
+		await ElMessageBox.confirm('确定要备份所有提示词数据吗？', '备份确认', {
+			confirmButtonText: '确认',
+			cancelButtonText: '取消',
+			type: 'warning'
+		})
+
+		// 直接调用备份接口，不传任何参数
+		const response = await savePromptFile()
 		console.log(response)
-        
-        if (response.data.code === 200) {
-            ElMessage.success( '备份成功')
-        } else {
-            ElMessage.error('备份失败')
-        }
-    } catch (error) {
-        // 用户取消备份不处理
-        if (error !== 'cancel') {
-            ElMessage.error('备份过程中出错: ' + (error.message || '未知错误'))
-        }
-    }
+
+		if (response.data.code === 200) {
+			ElMessage.success('备份成功')
+		} else {
+			ElMessage.error('备份失败')
+		}
+	} catch (error) {
+		// 用户取消备份不处理
+		if (error !== 'cancel') {
+			ElMessage.error('备份过程中出错: ' + (error.message || '未知错误'))
+		}
+	}
 }
 
 const handelpage = (val: number) => {
@@ -248,13 +243,13 @@ const handelpage = (val: number) => {
 
 // 提交处理
 const handleSubmit = async () => {
-	 // 先进行表单验证
-	 try {
-    await formRef.value.validate();
-  } catch (error) {
-    ElMessage.warning('请正确填写表单');
-    return;
-  }
+	// 先进行表单验证
+	try {
+		await formRef.value.validate();
+	} catch (error) {
+		ElMessage.warning('请正确填写表单');
+		return;
+	}
 	try {
 		const formData = createFormData(formState.form)
 		if (formState.isEdit) {
@@ -279,9 +274,9 @@ const filteredTableData = computed(() => {
 })
 // 分页后的数据
 const pagedData = computed(() => {
-  const start = (pagination.pageNum - 1) * pagination.pageSize
-  const end = start + pagination.pageSize
-  return filteredTableData.value.slice(start, end)
+	const start = (pagination.pageNum - 1) * pagination.pageSize
+	const end = start + pagination.pageSize
+	return filteredTableData.value.slice(start, end)
 })
 
 // ==================== 事件处理 ====================
@@ -298,12 +293,12 @@ const handleAdd = () => {
 	formState.dialogVisible = true
 }
 const handlePageChange = (val: number) => {
-  pagination.pageNum = val
+	pagination.pageNum = val
 }
 
 const handleSizeChange = (size: number) => {
-  pagination.pageSize = size
-  pagination.pageNum = 1 // 重置到第一页
+	pagination.pageSize = size
+	pagination.pageNum = 1 // 重置到第一页
 }
 
 const handleEdit = (row: PromptItem) => {
@@ -339,8 +334,6 @@ const handleDialogClose = () => {
 </script>
 
 <style scoped>
-
-
 .page {
 	float: right;
 	margin-top: 20px;

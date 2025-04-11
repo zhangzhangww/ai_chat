@@ -2,7 +2,10 @@ import axios from 'axios'
 
 const http= axios.create({
 	 baseURL: 'https://hnqx.online',// 通用请求地址前缀
-	  timeout: 10000,//超时时间
+	  timeout: 0,//超时时间
+	  
+
+
 })
 
 // 添加请求拦截器

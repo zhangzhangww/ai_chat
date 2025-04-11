@@ -19,7 +19,7 @@
           'assistant': msg.role === 'assistant'
         }">
           <!-- 提问 -->
-          <img v-if="msg.role === 'user'" class='role-img' style="margin-left: 8px;" src="@/assets/images/bac1.png" />
+          <!-- <img v-if="msg.role === 'user'" class='role-img' style="margin-left: 8px;" src="@/assets/images/bac1.png" /> -->
           <!-- ai回答 -->
           <img v-if="msg.role === 'assistant'" class='role-img' src="@/assets/images/aiIcon.png"
             style="margin-right: 8px;" />
@@ -50,16 +50,13 @@ import { marked } from 'marked';  // ✅ 使用命名导出
 const msgStore = userMsgStore()
 const aichat = ref(false)
 const msgValue = ref("")
-const model = ref("deepseek-ai/DeepSeek-R1-Distill-Qwen-7B")
+const model = ref("deepseek-ai/DeepSeek-R1")
 const isloading = ref(false)
 const msgDom = ref(null)
 let controller = new AbortController()
 
 
 const options = ref([
-  { value: 'Qwen/QwQ-32B', text: 'Qwen/QwQ-32B' },
-  { value: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-32B', text: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-32B' },
-  { value: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-7B', text: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-7B' },
   { value: 'deepseek-ai/DeepSeek-R1', text: 'deepseek-ai/DeepSeek-R1' },
   { value: 'deepseek-ai/DeepSeek-V3', text: 'deepseek-ai/DeepSeek-V3' },
 ])
@@ -233,7 +230,7 @@ p {
 
 .us {
   float: right;
-  background: #ffffff;
+  background: #e5f0ff;
   color: #333333;
   padding: 12px 24px;
   border-radius: var(--border-radius);

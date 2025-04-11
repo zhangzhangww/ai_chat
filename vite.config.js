@@ -7,7 +7,7 @@ import * as path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
-	base: '/ai_chat/',// 打包路径
+	// base: '/ai_chat/',// 打包路径
 	// base: '/zwBlog/src/',// 打包路径
 	resolve: {
 		alias: {
