@@ -8,6 +8,7 @@ import "highlight.js/styles/atom-one-dark.css"
 import PiniaPluginPersistedstate from "pinia-plugin-persistedstate"
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
+import 'katex/dist/katex.min.css'
 
 const app=createApp(App)
 
@@ -61,7 +62,6 @@ function highlightElement(el) {
     })
   })
 }
-
 
 
 

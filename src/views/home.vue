@@ -26,8 +26,8 @@
           <div>
             <div class="content-html ass1" v-if="msg.role === 'assistant'" v-html="msg.reasoning_content">
             </div>
-            <div class="content-html" :class="msg.role === 'assistant' ? 'ass' : 'us'" v-highlight
-              v-html="markdownToHtml(msg.content)">
+            <div class="content-html" :class="msg.role === 'assistant' ? 'ass' : 'us'" 
+              v-html="processedContent(msg.content)">
             </div>
           </div>
         </div>
@@ -46,19 +46,27 @@
 import { nextTick, onMounted, ref, onUnmounted } from 'vue'
 import { userMsgStore } from '@/stores/msgStore'
 import { marked } from 'marked';  // ✅ 使用命名导出
+// 新增引入
+import MarkdownIt from 'markdown-it'
+import mk from '@vscode/markdown-it-katex'
+import hljs from 'highlight.js'
+import DOMPurify from 'dompurify'
+
 
 const msgStore = userMsgStore()
 const aichat = ref(false)
 const msgValue = ref("")
-const model = ref("deepseek-ai/DeepSeek-R1")
+const model = ref("deepseek-chat")
 const isloading = ref(false)
 const msgDom = ref(null)
 let controller = new AbortController()
 
 
 const options = ref([
-  { value: 'deepseek-ai/DeepSeek-R1', text: 'deepseek-ai/DeepSeek-R1' },
-  { value: 'deepseek-ai/DeepSeek-V3', text: 'deepseek-ai/DeepSeek-V3' },
+  // { value: 'deepseek-ai/DeepSeek-R1', text: 'deepseek-ai/DeepSeek-R1' },
+  // { value: 'deepseek-ai/DeepSeek-V3', text: 'deepseek-ai/DeepSeek-V3' },
+  // { value: 'Qwen/QwQ-32B', text: 'Qwen/QwQ-32B' },
+  { value: 'deepseek-chat', text: 'deepseek-chat' },
 ])
 
 const msgList = ref([...msgStore.list])
@@ -76,11 +84,43 @@ onUnmounted(() => {
   controller.abort()
 })
 
-// Markdown 转 HTML（带代码高亮）
-const markdownToHtml = (content) => {
-  return marked(content);
-}
+// 配置 MarkdownIt 和 KaTeX
+const md = new MarkdownIt({
+  html: false,
+  xhtmlOut: true,  // 使用 XHTML 兼容语法
+  breaks: true,
+  linkify: true,
+  typographer: true,
+  highlight: (code, lang) => hljs.highlightAuto(code).value
+}).use(mk, {
+  throwOnError: false,
+  errorColor: '#cc0000',
+  delimiters: [
+    { left: '$$', right: '$$', display: true },  // 块级公式
+    { left: '$', right: '$', display: false }     // 行内公式
+  ],
+  strict: false  // 添加这一行，关闭严格模式
+});
 
+// 安全的内容处理
+const processedContent = (content) => {
+  if (!content) return '';
+  
+  // 渲染 Markdown
+  const rendered = md.render(String(content));
+  
+  // 使用 DOMPurify 消毒，仅允许安全的标签和属性
+  return DOMPurify.sanitize(rendered, {
+    ALLOWED_TAGS: [
+      'p', 'em', 'strong', 'code', 'pre', 'span', 'div', 'br', 'ul', 'ol', 'li',
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'a',
+      // KaTeX 数学公式相关标签
+      'math', 'mrow', 'mi', 'mo', 'mn', 'msup', 'msub', 'mfrac', 'msqrt'
+    ],
+    ALLOWED_ATTR: ['class', 'style', 'href', 'target', 'rel', 'aria-hidden'],
+    FORBID_ATTR: ['onclick', 'onerror', 'onload'] // 禁止事件属性
+  });
+};
 
 const scroll = () => {
   nextTick(() => {
@@ -111,7 +151,10 @@ const goChat = () => {
 
 const isSubmitting = ref(false)
 const submitMsg = async () => {
-  if (!msgValue.value.trim()) return
+  const msgValue1 = ref(msgValue.value)
+  msgValue.value = ""
+
+  if (!msgValue1.value.trim()) return
   //防止重复提交
   if (isSubmitting.value) return
   isSubmitting.value = true
@@ -121,17 +164,20 @@ const submitMsg = async () => {
     controller = new AbortController()
 
     // 添加用户消息
-    msgStore.userAddMsg(msgValue.value)
+    msgStore.userAddMsg(msgValue1.value)
     msgList.value = [...msgStore.list]
 
     // 添加初始助手消息
     msgStore.addAssistantMessage('', '')
     msgList.value = msgStore.list
 
+
+
     // 构造上下文消息
     const contextMessages = msgStore.formattedContext
 
-    const response = await fetch('https://api.siliconflow.cn/v1/chat/completions', {
+    // const response = await fetch('https://api.siliconflow.cn/v1/chat/completions', {
+    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${import.meta.env.VITE_DEEPSEEK_API_KEY}`,
@@ -147,9 +193,9 @@ const submitMsg = async () => {
         frequency_penalty: 0.5,
         n: 1,
         messages: [ // 系统提示词（可选）
-          { role: "system", content: "请根据对话历史提供专业准确的回答" },
+          { role: "system", content: "请根据对话历史提供专业准确的回答,所有涉及到数学公式的返回LaTeX格式，公式前后加上$$符号" },
           ...contextMessages,
-          { role: "user", content: msgValue.value }
+          { role: "user", content: msgValue1.value }
         ]
       }),
       signal: controller.signal
@@ -201,13 +247,21 @@ const submitMsg = async () => {
     }
   } finally {
     isloading.value = false
-    msgValue.value = ""
+
     isSubmitting.value = false
   }
 }
 </script>
 
 <style lang="scss" scoped>
+.katex {
+  font-size: 1.1em;
+}
+
+.katex-display {
+  margin: 1em 0;
+}
+
 p {
   margin: 0;
   padding: 0;
@@ -313,7 +367,7 @@ p {
     flex-direction: column;
     border-radius: var(--border-radius);
     box-sizing: border-box;
-    overflow: auto;
+    overflow: hidden;
 
 
 
@@ -376,5 +430,4 @@ p {
 
   }
 }
-
 </style>

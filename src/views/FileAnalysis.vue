@@ -4,8 +4,9 @@
 
     <!-- 通用文件上传区域 -->
     <div class="upload-section">
-      <input type="file" ref="fileInput" @change="handleFileSelect" accept=".txt,.docx" :disabled="isProcessing || isQuickChecking" />
-      
+      <input type="file" ref="fileInput" @change="handleFileSelect" accept=".txt,.docx,.pdf"
+        :disabled="isProcessing || isQuickChecking" />
+
     </div>
 
     <!-- 检查方式选择 -->
@@ -25,10 +26,13 @@
 
       <!-- 一键全文校对 -->
       <div class="check-option quick-check">
-        <h3>一键全文校对   <span style="float: right;font-size: 14px;color: #67c23a;cursor: pointer;" @click="showTypeDialog">自定义选择</span></h3>   
+        <h3>一键全文校对 <span style="float: right;font-size: 14px;color: #67c23a;cursor: pointer;"
+            @click="showTypeDialog">自定义选择</span></h3>
         <div class="option-content">
-          <span style="color: #999999;height: 32px;font-size: 14px;overflow: hidden;">对文章的标题、摘要、正文、参考文献等校对（时间较长，约10分钟左右）</span>
-          <button @click="quickCheck" :disabled="!selectedFile || isQuickChecking || isProcessing" class="check-btn quick-check-btn">
+          <span
+            style="color: #999999;height: 32px;font-size: 14px;overflow: hidden;">对文章的标题、摘要、正文、参考文献等校对（时间较长，约10分钟左右）</span>
+          <button @click="quickCheck" :disabled="!selectedFile || isQuickChecking || isProcessing"
+            class="check-btn quick-check-btn">
             {{ isQuickChecking ? '校对中...' : '一键全文校对' }}
           </button>
         </div>
@@ -36,46 +40,36 @@
     </div>
 
     <!-- 类型选择对话框 -->
-    <el-dialog 
-    v-model="typeDialogVisible" 
-    title="选择校对类型" 
-    width="50%"
-    class="type-select-dialog"
-  >
-    <div class="dialog-header">
-      <div class="select-actions">
-        <el-button link type="primary" @click="selectAllTypes">全选</el-button>
-        <el-button link type="primary" @click="clearAllTypes">清空</el-button>
+    <el-dialog v-model="typeDialogVisible" title="选择校对类型" width="50%" class="type-select-dialog">
+      <div class="dialog-header">
+        <div class="select-actions">
+          <el-button link type="primary" @click="selectAllTypes">全选</el-button>
+          <el-button link type="primary" @click="clearAllTypes">清空</el-button>
+        </div>
+        <!-- <div class="selected-count">已选择 {{ selectedTypeIds.length }}/{{ types.length }} </div> -->
       </div>
-      <div class="selected-count">已选择 {{ selectedTypeIds.length }}/{{ types.length }} </div>
-    </div>
-    
-    <div class="dialog-content">
-      <el-checkbox-group v-model="selectedTypeIds">
-        <el-checkbox 
-          v-for="type in types" 
-          :key="type.typeId" 
-          :value="type.typeId"
-          class="type-checkbox"
-        >
-          <span class="type-name">{{ type.typeName }}</span>
-        </el-checkbox>
-      </el-checkbox-group>
-    </div>
-    
-    <template #footer>
-      <div class="dialog-footer">
-        <el-button  @click="typeDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmTypeSelection" :disabled="selectedTypeIds.length === 0">
-          确定 ({{ selectedTypeIds.length }})
-        </el-button>
+
+      <div class="dialog-content">
+        <el-checkbox-group v-model="selectedTypeIds">
+          <el-checkbox v-for="type in types" :key="type.typeId" :value="type.typeId" class="type-checkbox">
+            <span class="type-name">{{ type.typeName }}</span>
+          </el-checkbox>
+        </el-checkbox-group>
       </div>
-    </template>
-  </el-dialog>
-    
+
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="typeDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmTypeSelection" :disabled="selectedTypeIds.length === 0">
+            确定
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
+
     <div class="file-type-tips">
       <ul>
-        <li>（1）选择需要修改的文件上传(docx/txt,文件小于50M)</li>
+        <li>（1）选择需要修改的文件上传(docx/txt/pdf,文件小于50M)</li>
         <li>（2）选择校对方式：按类型校对或一键全文校对</li>
         <li>（3）点击对应按钮开始校对</li>
       </ul>
@@ -85,9 +79,9 @@
       <span v-if="isProcessing || isQuickChecking" class="loader"></span>
       {{ status.message }}
     </div>
-    
+
     <p v-if="copiedUrlMessage" class="copied-message">{{ copiedUrlMessage }}</p>
-    
+
     <div v-if="analysisResult" class="result-section">
       <div class="title">
         <h2>分析结果</h2>
@@ -98,7 +92,7 @@
           </el-button>
         </div>
       </div>
-      <div class="result-content" v-html="markdownToHtml(analysisResult)"></div>
+      <div class="result-content" v-html="processedContent(analysisResult)"></div>
       <button @click="resetAll" class="reset-btn">新的分析</button>
     </div>
   </div>
@@ -110,10 +104,17 @@ import { marked } from 'marked';
 import * as mammoth from 'mammoth';
 import { Document, Paragraph, Packer, TextRun } from "docx";
 import { saveAs } from 'file-saver';
-import { getPromptList} from '../api/aiChat';
+import { getPromptList } from '../api/aiChat';
 import { getPromptType } from '../api/promptType';
 import { ElMessage } from 'element-plus';
 import axios from 'axios';
+import JSZip from 'jszip';
+// 新增引入
+import MarkdownIt from 'markdown-it'
+import mk from '@vscode/markdown-it-katex'
+import hljs from 'highlight.js'
+import DOMPurify from 'dompurify'
+import * as pdfjsLib from 'pdfjs-dist'; // 导入pdfjs-dist库
 
 // 响应式变量
 const selectedFile = ref(null);
@@ -140,10 +141,60 @@ const status = reactive({
   type: 'info'
 });
 
+
+// 配置 MarkdownIt 和 KaTeX
+const md = new MarkdownIt({
+  html: true, // 允许HTML标签
+  xhtmlOut: true,
+  breaks: true,
+  linkify: true,
+  typographer: true,
+  highlight: (code, lang) => hljs.highlightAuto(code).value
+}).use(mk, {
+  throwOnError: false,
+  errorColor: '#cc0000',
+  delimiters: [
+    { left: '$$', right: '$$', display: true },  // 块级公式
+    { left: '$', right: '$', display: false }     // 行内公式
+  ],
+  strict: false  // 添加这一行，关闭严格模式
+});
+
+// 安全的内容处理
+const processedContent = (content) => {
+  if (!content) return '';
+
+  // 渲染 Markdown
+  const rendered = md.render(String(content));
+
+  // 使用 DOMPurify 消毒，允许数学公式相关标签
+  return DOMPurify.sanitize(rendered, {
+    ALLOWED_TAGS: [
+      'p', 'em', 'strong', 'code', 'pre', 'span', 'div', 'br', 'ul', 'ol', 'li',
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'a',
+      // KaTeX 数学公式相关标签
+      'math', 'mrow', 'mi', 'mo', 'mn', 'msup', 'msub', 'mfrac', 'msqrt',
+      'mtable', 'mtr', 'mtd', 'munder', 'mover', 'munderover', 'mspace',
+      'mstyle', 'merror', 'mpadded', 'mphantom', 'mglyph', 'maligngroup',
+      'malignmark', 'mlabeledtr', 'mscarries', 'mscarry', 'msline', 'msgroup',
+      'mstack', 'mlongdiv', 'maction', 'semantics', 'annotation', 'annotation-xml'
+    ],
+    ALLOWED_ATTR: ['class', 'style', 'href', 'target', 'rel', 'aria-hidden', 'mathcolor', 'mathbackground'],
+    FORBID_ATTR: ['onclick', 'onerror', 'onload']
+  });
+};
+
+
+
+
+
+
+
+
 // 计算属性
 const buttonText = computed(() => {
-  return isProcessing.value ? '分析中...' : 
-         selectedFile.value ? '按错误类型校对' : '请选择文件';
+  return isProcessing.value ? '分析中...' :
+    selectedFile.value ? '按错误类型校对' : '请选择文件';
 });
 
 const activePromptContent = computed(() => {
@@ -160,20 +211,17 @@ onMounted(() => {
 });
 
 
-// Markdown 转 HTML（带代码高亮）
-const markdownToHtml = (content) => {
-  return marked(content);
-}
+
 
 // 新增响应式变量
 const typeDialogVisible = ref(false);
-const selectedTypeIds = ref([77,78,68,79,61,72,85,71,58,59,82,73]);
+const selectedTypeIds = ref([77, 68, 73, 59, 103, 58, 82]);
 
 // 显示类型选择对话框
 const showTypeDialog = () => {
   // selectedTypeIds.value = types.value.map(type => type.typeId); // 默认全选
   typeDialogVisible.value = true;
-  
+
 };
 
 
@@ -202,17 +250,17 @@ const quickCheck = async () => {
   try {
     isQuickChecking.value = true;
     showStatus('正在一键检查文件...', 'info');
-    
+
     const formData = new FormData();
     formData.append('file', selectedFile.value);
-    
+
     // 获取选中的promptIds
     const selectedPromptIds = selectedTypeIds.value.join(',');
 
 
     // 将typeIds作为参数发送
     formData.append('typeIds', selectedPromptIds);
-    
+
     const response = await axios.post('https://hnqx.online/chat/chat/textCheck', formData, {
       responseType: 'blob',
       headers: {
@@ -249,7 +297,7 @@ const quickCheck = async () => {
 const getFileNameFromHeaders = (headers, blob) => {
   const contentDisposition = headers['content-disposition'];
   let fileName = '检查结果_' + new Date().toISOString().slice(0, 10);
-  
+
   if (contentDisposition) {
     const utf8FilenameMatch = contentDisposition.match(/filename\*=UTF-8''(.+)/);
     if (utf8FilenameMatch) {
@@ -261,12 +309,12 @@ const getFileNameFromHeaders = (headers, blob) => {
       }
     }
   }
-  
+
   // 使用传入的blob参数判断文件类型
   if (!fileName.includes('.')) {
-    fileName +=  '.docx' ;
+    fileName += '.docx';
   }
-  
+
   return fileName;
 };
 
@@ -303,7 +351,7 @@ const handleNonBlobResponse = (data) => {
   if (!data) {
     throw new Error('未收到有效响应数据');
   }
-  
+
   if (data.success === false) {
     if (data.result) {
       analysisResult.value = data.result;
@@ -320,11 +368,11 @@ const handleNonBlobResponse = (data) => {
 // 辅助函数：处理错误
 const handleCheckError = (error) => {
   let errorMessage = '一键检查失败';
-  
+
   if (error.response) {
     // 服务器响应了错误状态码
     console.error('服务器错误:', error.response.status, error.response.data);
-    
+
     if (error.response.data instanceof Blob) {
       // 如果是Blob类型的错误响应
       parseBlobToJson(error.response.data)
@@ -336,7 +384,7 @@ const handleCheckError = (error) => {
         });
       return;
     }
-    
+
     errorMessage += `: ${error.response.data?.message || `服务器错误 ${error.response.status}`}`;
   } else if (error.request) {
     // 请求已发出但没有收到响应
@@ -347,7 +395,7 @@ const handleCheckError = (error) => {
     console.error('检查错误:', error.message);
     errorMessage += `: ${error.message}`;
   }
-  
+
   showStatus(errorMessage, 'error');
 };
 
@@ -360,7 +408,7 @@ const fetchTypeList = async () => {
       typeId: Number(item.typeId),
       orderNumber: Number(item.orderNumber)
     }));
-    
+
     // 如果有类型数据，默认选择第一个类型并获取对应的规则
     if (types.value.length > 0) {
       radio.value = types.value[0].typeId;
@@ -392,7 +440,7 @@ const handleTypeChange = () => {
 // 更新当前显示的规则内容
 const updateCurrentPromptContent = () => {
   if (radio.value === 0) return;
-  
+
   const filteredData = promptList.value.filter(
     item => item.promptTypeId === radio.value
   );
@@ -400,7 +448,7 @@ const updateCurrentPromptContent = () => {
   currentPromptContent.value = filteredData
     .map((item, index) => {
       const text = item.promptContent?.trim() || '';
-      return text 
+      return text
     })
     .filter(Boolean)
     .join('\n<br>');
@@ -462,14 +510,23 @@ const validateFile = (file) => {
 
   const validTypes = [
     'text/plain',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/pdf'
   ];
 
-  if (!validTypes.includes(file.type)) {
-    showStatus('错误：仅支持TXT/DOCX格式', 'error');
+  const validExtensions = ['.txt', '.docx', '.pdf'];
+  const fileName = file.name.toLowerCase();
+
+  // 检查文件类型或扩展名
+  const isValidType = validTypes.includes(file.type) ||
+    validExtensions.some(ext => fileName.endsWith(ext));
+
+  if (!isValidType) {
+    showStatus('错误：仅支持TXT/DOCX/PDF格式', 'error');
     return false;
   }
-  if (file.size > 5 * 1024 * 1024) {
+
+  if (file.size > 50 * 1024 * 1024) {
     showStatus('错误：文件大小不能超过50MB', 'error');
     resetFileInput();
     return false;
@@ -483,7 +540,7 @@ const startAnalysis = async () => {
   try {
     initAnalysisProcess();
     const content = await readFileContent(selectedFile.value);
-    const result = await analyzeContent(content);
+    const result = await analyzeContent1(content);
 
     analysisResult.value = result;
     showStatus('分析完成', 'success');
@@ -493,15 +550,77 @@ const startAnalysis = async () => {
     isProcessing.value = false;
   }
 };
+//在组件初始化时设置worker路径
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
 // 文件内容读取
 const readFileContent = (file) => {
   return new Promise(async (resolve, reject) => {
     try {
-      if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-        const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
-        resolve(result.value);
+      if (file.type === 'application/pdf') {
+        // PDF处理逻辑保持不变（因为PDF中不包含OMML格式）
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const loadingTask = pdfjsLib.getDocument(arrayBuffer);
+          const pdf = await loadingTask.promise;
+          
+          let fullText = '';
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const textItems = textContent.items.map(item => item.str);
+            fullText += textItems.join(' ') + '\n';
+          }
+          
+          resolve(fullText);
+        } catch (pdfError) {
+          console.error('PDF解析错误:', pdfError);
+          reject(new Error('PDF文件解析失败，请确保文件未损坏'));
+        }
+      } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        // 重点修改DOCX处理部分，提取OMML数学公式
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const zip = await JSZip.loadAsync(arrayBuffer);
+          const xmlContent = await zip.file('word/document.xml').async('text');
+          
+          // 正则表达式匹配OMML数学公式
+          const mathRegex = /<m:oMath>.*?<\/m:oMath>/gs;
+          let processedContent = xmlContent;
+          let mathMatches = [];
+          let match;
+          
+          // 提取所有数学公式
+          while ((match = mathRegex.exec(xmlContent)) !== null) {
+            mathMatches.push(match[0]);
+          }
+          
+          // 将公式替换为可读标记或转换为MathML/LaTeX
+          processedContent = processedContent.replace(mathRegex, (match) => {
+            // 这里可以添加公式转换逻辑
+            return '[MATH_FORMULA]'; // 临时占位符
+          });
+          
+          // 简单提取文本内容（不含XML标签）
+          const textContent = processedContent.replace(/<[^>]+>/g, ' ');
+          
+          // 可选：将提取的原始OMML公式附加到结果中
+          const result = {
+            text: textContent,
+            mathFormulas: mathMatches,
+            warnings: mathMatches.length > 0 ? 
+              `文档包含${mathMatches.length}个数学公式，需要特殊处理` : null
+          };
+          
+          resolve(JSON.stringify(result));
+          
+        } catch (docxError) {
+          console.error('DOCX解析错误:', docxError);
+          reject(new Error('DOCX文件解析失败'));
+        }
       } else {
+        // 其他文件类型处理保持不变
         const reader = new FileReader();
         reader.onload = (e) => resolve(e.target.result);
         reader.onerror = () => reject(new Error('文件读取失败'));
@@ -513,6 +632,56 @@ const readFileContent = (file) => {
   });
 };
 
+
+// API分析请求
+const analyzeContent1 = async (content) => {
+  showStatus('正在分析文件...', 'info');
+  analysisResult.value = '';
+
+  try {
+    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      // const response = await fetch('https://api-docs.deepseek.com/zh-cn/', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${import.meta.env.VITE_DEEPSEEK_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages: [
+          { role: "system", content: "你是中文科技期刊的编辑,统一字体大小,所有涉及到数学公式的返回LaTeX格式，公式前后加上$$符号" },
+          {
+            role: "user",
+            content: `1.仅仅返回查询出来的错误信息，正确的信息不能返回。返回信息的字数越少越好。只能返回和查询要求相关的信息。2.中文双引号使用要求输出中文内容时，如果需要引号，必须使用中文引号(“”)，不能使用(””)。例如：要对静稳指数4个字使用引号时，必须这样“静稳指数”，不能这样”静稳指数”。\n${activePromptContent.value}\n\n文档内容如下：\n${content}`
+          },
+        ],
+        temperature: 0,
+        do_sample: false,
+        top_p: 1.0,
+        top_k: 50,
+        seed: 123,       //固定随机种子
+        frequency_penalty: 0.5,
+        stream: true,
+
+      }),
+      signal: abortController.value.signal
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || 'API请求失败');
+    }
+
+    return await processStream(response);
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error('请求已取消');
+    }
+    throw new Error(`分析失败: ${error.message}`);
+  }
+};
+
+
 // API分析请求
 const analyzeContent = async (content) => {
   showStatus('正在分析文件...', 'info');
@@ -520,6 +689,7 @@ const analyzeContent = async (content) => {
 
   try {
     const response = await fetch('https://api.siliconflow.cn/v1/chat/completions', {
+      // const response = await fetch('https://api-docs.deepseek.com/zh-cn/', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${import.meta.env.VITE_DEEPSEEK_API_KEY}`,
@@ -528,20 +698,15 @@ const analyzeContent = async (content) => {
       body: JSON.stringify({
         model: model.value,
         messages: [
-          { role: "system", content: "你是中文科技期刊的编辑，返回信息时简明扼要，段落分明，使用统一的字体大小。" },
-          { 
-            role: "user", 
-            content: `分析以下文档内容：\n${activePromptContent.value}\n\n文档内容如下：\n${content}` 
+          { role: "system", content: "你是中文科技期刊的编辑,统一字体大小" },
+          {
+            role: "user",
+            content: `分析以下文档内容：\n${activePromptContent.value}\n\n文档内容如下：\n${content}`
           },
         ],
-        temperature: 0,
-        max_tokens: 5120,
-        do_sample: false,
+
         stream: true,
-        top_p: 1.0,
-        top_k: 50,
-        seed:123,       //固定随机种子
-        frequency_penalty: 0.5
+
       }),
       signal: abortController.value.signal
     });
@@ -578,7 +743,7 @@ const processStream = async (response) => {
         if (line.startsWith('data: ')) {
           const dataStr = line.slice(6);
           if (dataStr === '[DONE]') break;
-          
+
           try {
             const data = JSON.parse(dataStr);
             if (data.choices[0].delta?.content) {
@@ -604,7 +769,7 @@ const resetAll = () => {
   analysisResult.value = '';
   resetStatus();
   resetFileInput();
-  
+
   if (abortController.value) {
     abortController.value.abort();
     abortController.value = new AbortController();
@@ -651,7 +816,7 @@ const resetStatus = () => {
     flex-direction: column;
     max-height: 70vh;
     overflow: hidden;
-    
+
     .el-dialog__header {
       position: sticky;
       top: 0;
@@ -660,13 +825,13 @@ const resetStatus = () => {
       padding-bottom: 10px;
       margin-right: 0;
     }
-    
+
     .el-dialog__body {
       padding: 0 20px;
       flex: 1;
       overflow-y: auto;
     }
-    
+
     .el-dialog__footer {
       position: sticky;
       bottom: 0;
@@ -685,17 +850,17 @@ const resetStatus = () => {
   padding: 10px 0;
   border-bottom: 1px solid #eee;
   margin-bottom: 10px;
-  
+
   .select-actions {
     display: flex;
     gap: 15px;
-    
+
     .el-button {
       padding: 0;
       height: auto;
     }
   }
-  
+
   .selected-count {
     font-size: 13px;
     color: #666;
@@ -706,42 +871,44 @@ const resetStatus = () => {
   padding: 5px 0;
   max-height: calc(70vh - 150px);
   overflow-y: auto;
-  
+
   .el-checkbox-group {
     display: grid;
-      grid-template-columns: 1fr;
-      gap: 24px;
+    grid-template-columns: 1fr;
+    gap: 24px;
   }
-  
+
   .type-checkbox {
     display: grid;
-      grid-template-columns: auto 1fr;
-      align-items: start; /* 顶部对齐 */
-      width: 100%;
-      height: auto;
-      margin: 0 !important;
-      min-height: auto !important; /* 移除最小高度限制 */
-    
+    grid-template-columns: auto 1fr;
+    align-items: start;
+    /* 顶部对齐 */
+    width: 100%;
+    height: auto;
+    margin: 0 !important;
+    min-height: auto !important;
+    /* 移除最小高度限制 */
+
     :deep(.el-checkbox__label) {
       display: inline-block;
-        white-space: normal;
-        word-break: break-word;
-        text-align: left;
-        line-height: 1.5;
-        padding-left: 8px;
-        width: 100%;
+      white-space: normal;
+      word-break: break-word;
+      text-align: left;
+      line-height: 1.5;
+      padding-left: 8px;
+      width: 100%;
     }
-    
+
     .type-name {
       font-weight: 500;
-        color: #333;
-        display: block;
-        width: 100%;
-        /* 确保高度自适应 */
-        height: auto;
-        min-height: 0;
+      color: #333;
+      display: block;
+      width: 100%;
+      /* 确保高度自适应 */
+      height: auto;
+      min-height: 0;
     }
-    
+
     .type-desc {
       font-size: 12px;
       color: #999;
@@ -767,7 +934,7 @@ const resetStatus = () => {
 
 .upload-section {
   margin-bottom: 20px;
-  
+
   input[type="file"] {
     width: 100%;
     padding: 8px;
@@ -775,7 +942,7 @@ const resetStatus = () => {
     border-radius: 4px;
     margin-bottom: 10px;
   }
-  
+
   .file-info {
     display: flex;
     align-items: center;
@@ -783,14 +950,14 @@ const resetStatus = () => {
     padding: 8px;
     background-color: #f5f5f5;
     border-radius: 4px;
-    
+
     .reset-file-btn {
       background: none;
       border: none;
       font-size: 16px;
       cursor: pointer;
       color: #999;
-      
+
       &:hover {
         color: #666;
       }
@@ -802,30 +969,30 @@ const resetStatus = () => {
   display: flex;
   gap: 20px;
   margin-bottom: 20px;
-  
+
   .check-option {
     flex: 1;
     padding: 15px;
     border-radius: 8px;
     background-color: #ffffff;
-    
+
     h3 {
       margin-top: 0;
       margin-bottom: 15px;
       color: #333;
       font-size: 16px;
     }
-    
+
     .option-content {
       display: flex;
       flex-direction: column;
       gap: 10px;
     }
-    
+
     &.type-based {
       border-left: 4px solid #409eff;
     }
-    
+
     &.quick-check {
       border-left: 4px solid #67c23a;
     }
@@ -840,33 +1007,33 @@ const resetStatus = () => {
   transition: all 0.3s;
   font-size: 14px;
   text-align: center;
-  
+
   &:disabled {
     opacity: 0.7;
     cursor: not-allowed;
   }
-  
+
   &.quick-check-btn {
     background-color: #67c23a;
     color: white;
-    
+
     &:hover:not(:disabled) {
       background-color: #85ce61;
     }
-    
+
     &:disabled {
       background-color: #b3e19d;
     }
   }
-  
+
   &:not(.quick-check-btn) {
     background-color: #409eff;
     color: white;
-    
+
     &:hover:not(:disabled) {
       background-color: #66b1ff;
     }
-    
+
     &:disabled {
       background-color: #a0cfff;
     }
@@ -879,24 +1046,24 @@ const resetStatus = () => {
   display: flex;
   gap: 20px;
   margin-bottom: 20px;
-  
+
   .method-section {
     flex: 1;
     padding: 20px;
     border-radius: 8px;
     background-color: #f8f9fa;
-    
+
     h2 {
       margin-top: 0;
       margin-bottom: 15px;
       color: #333;
       font-size: 18px;
     }
-    
+
     &.type-based {
       border-left: 4px solid #409eff;
     }
-    
+
     &.quick-check {
       border-left: 4px solid #67c23a;
     }
@@ -911,7 +1078,7 @@ const resetStatus = () => {
   background-color: #eceef0;
   padding: 15px;
   border-radius: 8px;
-  
+
   ul {
     padding-left: 20px;
     margin: 5px 0;
@@ -922,36 +1089,38 @@ const resetStatus = () => {
   padding: 10px;
   border-radius: 4px;
   margin: 10px 0;
-  
+
   &.info {
     background-color: #f4f4f5;
     color: #909399;
   }
-  
+
   &.success {
     background-color: #e9f7e2;
     color: #67c23a;
   }
-  
+
   &.error {
     background-color: #fef0f0;
     color: #f56c6c;
   }
-  
+
   .loader {
     display: inline-block;
     width: 12px;
     height: 12px;
-    border: 2px solid rgba(0,0,0,0.2);
+    border: 2px solid rgba(0, 0, 0, 0.2);
     border-radius: 50%;
-    border-top-color: rgba(0,0,0,0.6);
+    border-top-color: rgba(0, 0, 0, 0.6);
     animation: spin 1s linear infinite;
     margin-right: 5px;
   }
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .result-section {
@@ -960,19 +1129,19 @@ const resetStatus = () => {
   border-radius: 4px;
   padding: 20px;
   background-color: #fff;
-  
+
   .title {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 15px;
-    
+
     h2 {
       margin: 0;
       color: #303133;
     }
   }
-  
+
   .result-content {
     padding: 15px;
     background-color: #fafafa;
@@ -980,7 +1149,7 @@ const resetStatus = () => {
     min-height: 200px;
     line-height: 1.6;
   }
-  
+
   .reset-btn {
     margin-top: 15px;
     padding: 8px 16px;
@@ -989,7 +1158,7 @@ const resetStatus = () => {
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    
+
     &:hover {
       background-color: #f78989;
     }
@@ -1001,6 +1170,7 @@ const resetStatus = () => {
   font-size: 14px;
   margin: 5px 0;
 }
+
 .input {
   width: 100%;
   max-height: 280px;

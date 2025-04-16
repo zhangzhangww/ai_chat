@@ -60,7 +60,7 @@
 			@closed="handleDialogClose">
 			<el-form :model="formState.form" :rules="rules" ref="formRef" label-width="100px">
 				<el-form-item label="编校知识：" prop="promptContent">
-					<el-input v-model="formState.form.promptContent" type="textarea" :rows="3" placeholder="请输入提示词" />
+					<el-input v-model="formState.form.promptContent" type="textarea" :rows="7" placeholder="请输入提示词" />
 				</el-form-item>
 
 				<el-form-item label="类型：" prop="promptTypeId">
